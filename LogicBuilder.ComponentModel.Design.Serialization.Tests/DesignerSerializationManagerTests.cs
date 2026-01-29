@@ -526,21 +526,21 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
             }
         }
 
-        //[Fact]
-        //public void ReportError_AddsErrorToList()
-        //{
-        //    // Arrange
-        //    var manager = (IDesignerSerializationManager)new DesignerSerializationManager();
+        [Fact]
+        public void ReportError_AddsErrorToList()
+        {
+            // Arrange
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager();
 
-        //    // Act & Assert
-        //    using (((DesignerSerializationManager)manager).CreateSession())
-        //    {
-        //        var error = "Test error";
-        //        manager.ReportError(error);
-        //        var errors = ((DesignerSerializationManager)manager).Errors;
-        //        Assert.Contains(error, errors);
-        //    }
-        //}
+            // Act & Assert
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var error = "Test error";
+                manager.ReportError(error);
+                var errors = ((DesignerSerializationManager)manager).Errors.OfType<string>();
+                Assert.Contains(error, errors);
+            }
+        }
 
         [Fact]
         public void ReportError_ThrowsExceptionOutsideSession()
