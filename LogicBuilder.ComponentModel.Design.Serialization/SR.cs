@@ -1290,7 +1290,7 @@
         internal const string ResourceExpressionEditorSheet_ClassKey = "ResourceExpressionEditorSheet_ClassKey";
         internal const string ResourceExpressionEditorSheet_InvalidResourceKey = "ResourceExpressionEditorSheet_InvalidResourceKey";
         internal const string ResourceExpressionEditorSheet_ResourceKey = "ResourceExpressionEditorSheet_ResourceKey";
-        private ResourceManager resources;
+        private readonly ResourceManager resources;
         internal const string RouteUrlExpressionEditor_InvalidExpression = "RouteUrlExpressionEditor_InvalidExpression";
         internal const string RouteUrlExpressionEditorSheet_RouteName = "RouteUrlExpressionEditorSheet_RouteName";
         internal const string RouteUrlExpressionEditorSheet_RouteValues = "RouteUrlExpressionEditorSheet_RouteValues";

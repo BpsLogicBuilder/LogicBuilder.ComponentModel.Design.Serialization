@@ -4,10 +4,12 @@ using System.ComponentModel;
 using System.ComponentModel.Design;
 using System.ComponentModel.Design.Serialization;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Text;
 
 [assembly: CLSCompliant(true)]
+[assembly: InternalsVisibleTo("LogicBuilder.ComponentModel.Design.Serialization.Tests")]
 namespace LogicBuilder.ComponentModel.Design.Serialization
 {
     /// <summary>Provides an implementation of the <see cref="T:System.ComponentModel.Design.Serialization.IDesignerSerializationManager" /> interface.</summary>
@@ -15,7 +17,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
     {
         private sealed class SerializationSession : IDisposable
         {
-            private DesignerSerializationManager serializationManager;
+            private readonly DesignerSerializationManager serializationManager;
 
             internal SerializationSession(DesignerSerializationManager serializationManager)
             {
@@ -47,9 +49,9 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
 
         private sealed class WrappedPropertyDescriptor : PropertyDescriptor
         {
-            private object target;
+            private readonly object target;
 
-            private PropertyDescriptor property;
+            private readonly PropertyDescriptor property;
 
             public override AttributeCollection Attributes
             {
@@ -115,7 +117,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
             }
         }
 
-        private IServiceProvider provider;
+        private readonly IServiceProvider provider;
 
         private ITypeResolutionService typeResolver;
 
@@ -491,11 +493,11 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                                 {
                                     if (!(array2[k] == null) && !parameters[k].ParameterType.IsAssignableFrom(array2[k]))
                                     {
-                                        if (array[k] is IConvertible)
+                                        if (array[k] is IConvertible convertible)
                                         {
                                             try
                                             {
-                                                array3[k] = ((IConvertible)array[k]).ToType(parameters[k].ParameterType, null);
+                                                array3[k] = convertible.ToType(parameters[k].ParameterType, null);
                                                 goto IL_219;
                                             }
                                             catch (InvalidCastException)
@@ -550,7 +552,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                         HelpLink = "SerializationManagerNoMatchingCtor"
                     };
                 }
-                if (addToContainer && obj is IComponent && this.Container != null)
+                if (addToContainer && obj is IComponent component && this.Container != null)
                 {
                     bool flag3 = false;
                     if (!this.PreserveNames && name != null && this.Container.Components[name] != null)
@@ -559,11 +561,11 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                     }
                     if (name == null | flag3)
                     {
-                        this.Container.Add((IComponent)obj);
+                        this.Container.Add(component);
                     }
                     else
                     {
-                        this.Container.Add((IComponent)obj, name);
+                        this.Container.Add(component, name);
                     }
                 }
             }
@@ -886,9 +888,9 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
             {
                 text = (string)this.namesByInstance[value];
             }
-            if (text == null && value is IComponent)
+            if (text == null && value is IComponent component)
             {
-                ISite site = ((IComponent)value).Site;
+                ISite site = component.Site;
                 if (site != null)
                 {
                     if (site is INestedSite nestedSite)
@@ -941,10 +943,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
         /// <param name="provider">The <see cref="T:System.ComponentModel.Design.Serialization.IDesignerSerializationProvider" /> to remove.</param>
         void IDesignerSerializationManager.RemoveSerializationProvider(IDesignerSerializationProvider provider)
         {
-            if (this.designerSerializationProviders != null)
-            {
-                this.designerSerializationProviders.Remove(provider);
-            }
+            this.designerSerializationProviders?.Remove(provider);
         }
 
         /// <summary>Used to report a recoverable error in serialization.</summary>
