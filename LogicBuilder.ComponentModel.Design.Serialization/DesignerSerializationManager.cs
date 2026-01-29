@@ -3,6 +3,7 @@ using System.Collections;
 using System.ComponentModel;
 using System.ComponentModel.Design;
 using System.ComponentModel.Design.Serialization;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
@@ -15,6 +16,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
     /// <summary>Provides an implementation of the <see cref="T:System.ComponentModel.Design.Serialization.IDesignerSerializationManager" /> interface.</summary>
     public class DesignerSerializationManager : IDesignerSerializationManager, IServiceProvider
     {
+        [ExcludeFromCodeCoverage]
         private sealed class SerializationSession : IDisposable
         {
             private readonly DesignerSerializationManager serializationManager;
@@ -30,6 +32,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
             }
         }
 
+        [ExcludeFromCodeCoverage]
         private sealed class ReferenceComparer : IEqualityComparer
         {
             bool IEqualityComparer.Equals(object x, object y)
@@ -47,6 +50,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
             }
         }
 
+        [ExcludeFromCodeCoverage]
         private sealed class WrappedPropertyDescriptor : PropertyDescriptor
         {
             private readonly object target;

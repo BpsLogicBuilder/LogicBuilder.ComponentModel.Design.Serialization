@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="coverlet.runsettings" />
+  </Folder>
   <Project Path="LogicBuilder.ComponentModel.Design.Serialization.Tests/LogicBuilder.ComponentModel.Design.Serialization.Tests.csproj" Id="a8c7ff01-a569-45c6-adeb-15a6311901fe" />
   <Project Path="LogicBuilder.ComponentModel.Design.Serialization/LogicBuilder.ComponentModel.Design.Serialization.csproj" />
 </Solution>
