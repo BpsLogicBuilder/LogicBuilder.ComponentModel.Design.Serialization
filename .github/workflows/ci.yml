@@ -45,13 +45,7 @@ jobs:
         run: dotnet build --no-restore --configuration Release
 
       - name: Run unit tests
-        run: dotnet test --no-build --verbosity normal --configuration Release --collect:"XPlat Code Coverage" --settings coverlet.runsettings
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v3
-        with:
-          files: '**/coverage.cobertura.xml'
-          fail_ci_if_error: true
+        run: dotnet test --no-build --verbosity normal --configuration Release /p:CollectCoverage=true /p:Threshold=50 /p:ThresholdType=line /p:ThresholdStat=Average /p:CoverletOutput=./TestResults/ /p:ExcludeByAttribute="GeneratedCodeAttribute"
 
   publish-github-packages:
     name: Publish to GitHub Packages
