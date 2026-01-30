@@ -73,6 +73,6 @@ jobs:
       - name: Publish to GitHub Packages
         run: |
           dotnet pack --configuration Release --no-build -o ./nupkg
-          dotnet nuget push ./nupkg/*.nupkg --skip-duplicate --api-key ${{ $Env:NUGET_AUTH_TOKEN }}
+          dotnet nuget push ./nupkg/*.nupkg --skip-duplicate --api-key ${{ env.NUGET_AUTH_TOKEN }}
         env:
           NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
