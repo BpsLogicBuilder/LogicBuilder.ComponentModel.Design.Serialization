@@ -4,9 +4,13 @@ on: # rebuild any PRs for main branch changes
     types: [opened, reopened, edited]
     branches:
       - master
+
+permissions: write-all
+
 jobs:
   create-edit-comment:
     name: check   
     runs-on: ubuntu-latest
     steps:
       - uses: danhellem/github-actions-pr-is-linked-to-work-item@main
+  
