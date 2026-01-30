@@ -5,7 +5,9 @@ on: # rebuild any PRs for main branch changes
     branches:
       - master
 
-permissions: write-all
+permissions:
+  contents: read
+  pull-requests: write
 
 jobs:
   create-edit-comment:
