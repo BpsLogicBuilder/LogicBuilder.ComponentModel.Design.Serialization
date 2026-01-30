@@ -3,7 +3,7 @@ on: # rebuild any PRs for main branch changes
   pull_request:
     types: [opened, reopened, edited]
     branches:
-      - main 
+      - master
 jobs:
   create-edit-comment:
     name: check   
