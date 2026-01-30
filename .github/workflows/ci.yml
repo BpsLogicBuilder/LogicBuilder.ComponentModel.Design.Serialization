@@ -25,6 +25,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check for linked Azure Boards work item
+        uses: danhellem/github-actions-pr-is-linked-to-work-item@v1.1.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          azure_devops_organization: 'BpsLogicBuilder'
+          azure_devops_project: 'LogicBuilder'
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:

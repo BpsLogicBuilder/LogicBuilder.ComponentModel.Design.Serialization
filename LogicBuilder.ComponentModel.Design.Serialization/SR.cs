@@ -1810,16 +1810,21 @@
         internal const string XslTransformFileEditor_Ellipses = "XslTransformFileEditor_Ellipses";
         internal const string XslTransformFileEditor_Filter = "XslTransformFileEditor_Filter";
 
+        // Maximum length for string arguments when formatting resource messages.
+        private const int MaxFormattedStringLength = 0x400;
+        // Length to which strings are truncated before appending an ellipsis.
+        private const int TruncatedStringLength = 0x3fd;
+
         internal SR()
         {
-            this.resources = new ResourceManager("LogicBuilder.ComponentModel.Design.Serialization.Resources", base.GetType().Assembly);
+            this.resources = new ResourceManager(typeof(Resources));
         }
 
         private static LogicBuilder.ComponentModel.Design.Serialization.SR GetLoader()
         {
             if (loader == null)
             {
-                LogicBuilder.ComponentModel.Design.Serialization.SR sr = new LogicBuilder.ComponentModel.Design.Serialization.SR();
+                LogicBuilder.ComponentModel.Design.Serialization.SR sr = new();
                 Interlocked.CompareExchange<LogicBuilder.ComponentModel.Design.Serialization.SR>(ref loader, sr, null);
             }
             return loader;
@@ -1859,9 +1864,9 @@
             }
             for (int i = 0; i < args.Length; i++)
             {
-                if ((args[i] is string str2) && (str2.Length > 0x400))
+                if ((args[i] is string str2) && (str2.Length > MaxFormattedStringLength))
                 {
-                    args[i] = str2.Substring(0, 0x3fd) + "...";
+                    args[i] = str2.Substring(0, TruncatedStringLength) + "...";
                 }
             }
             return string.Format(CultureInfo.CurrentCulture, format, args);
