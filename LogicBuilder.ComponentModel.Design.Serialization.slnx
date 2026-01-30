@@ -1,7 +1,6 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path=".github/workflows/ci.yml" />
-    <File Path="coverlet.runsettings" />
     <File Path="Directory.Build.props" />
   </Folder>
   <Project Path="LogicBuilder.ComponentModel.Design.Serialization.Tests/LogicBuilder.ComponentModel.Design.Serialization.Tests.csproj" Id="a8c7ff01-a569-45c6-adeb-15a6311901fe" />
