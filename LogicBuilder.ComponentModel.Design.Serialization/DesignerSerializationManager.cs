@@ -226,13 +226,11 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
         {
             get
             {
-                if (this.container == null)
+                if (this.container == null && this.GetService(typeof(IDesignerHost)) is IDesignerHost designerHost)
                 {
-                    if (this.GetService(typeof(IDesignerHost)) is IDesignerHost designerHost)
-                    {
-                        this.container = designerHost.Container;
-                    }
+                    this.container = designerHost.Container;
                 }
+
                 return this.container;
             }
             set
@@ -250,10 +248,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
             get
             {
                 this.CheckSession();
-                if (this.errorList == null)
-                {
-                    this.errorList = new ArrayList();
-                }
+                this.errorList ??= [];
                 return this.errorList;
             }
         }
@@ -352,7 +347,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                     PropertyDescriptor[] array;
                     if (obj == null)
                     {
-                        array = new PropertyDescriptor[0];
+                        array = [];
                     }
                     else
                     {
@@ -375,7 +370,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
             {
                 if (this.designerSerializationProviders == null)
                 {
-                    return new ArrayList();
+                    return [];
                 }
                 return this.designerSerializationProviders.Clone() as ArrayList;
             }
@@ -447,24 +442,20 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                     obj = null;
                 }
             }
-            if ((obj == null & addToContainer) && typeof(IComponent).IsAssignableFrom(type) && (array == null || array.Length == 0 || (array.Length == 1 && array[0] == this.Container)))
+            if ((obj == null & addToContainer) 
+                && typeof(IComponent).IsAssignableFrom(type) 
+                && (array == null || array.Length == 0 || (array.Length == 1 && array[0] == this.Container))
+                && this.GetService(typeof(IDesignerHost)) is IDesignerHost designerHost && designerHost.Container == this.Container)
             {
-                if (this.GetService(typeof(IDesignerHost)) is IDesignerHost designerHost && designerHost.Container == this.Container)
+                bool flag = false;
+                if (!this.PreserveNames && name != null && this.Container.Components[name] != null)
                 {
-                    bool flag = false;
-                    if (!this.PreserveNames && name != null && this.Container.Components[name] != null)
-                    {
-                        flag = true;
-                    }
-                    if (name == null | flag)
-                    {
-                        obj = designerHost.CreateComponent(type);
-                    }
-                    else
-                    {
-                        obj = designerHost.CreateComponent(type, name);
-                    }
+                    flag = true;
                 }
+
+                obj = (name == null | flag) 
+                    ? designerHost.CreateComponent(type) 
+                    : designerHost.CreateComponent(type, name);
             }
             if (obj == null)
             {
@@ -509,6 +500,8 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                                             }
                                             catch (InvalidCastException)
                                             {
+                                                // Type conversion failed - this constructor parameter doesn't match.
+                                                // Fall through to set flag2 = false and break.
                                             }
                                         }
                                         flag2 = false;
@@ -532,7 +525,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                 }
                 catch (MissingMethodException)
                 {
-                    StringBuilder stringBuilder = new StringBuilder();
+                    StringBuilder stringBuilder = new();
                     object[] array4 = array;
                     for (int l = 0; l < array4.Length; l++)
                     {
@@ -550,11 +543,11 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                             stringBuilder.Append("null");
                         }
                     }
-                    throw new SerializationException(SR.GetString("SerializationManagerNoMatchingCtor", new object[]
-                    {
+                    throw new SerializationException(SR.GetString("SerializationManagerNoMatchingCtor",
+                    [
                         type.FullName,
                         stringBuilder.ToString()
-                    }))
+                    ]))
                     {
                         HelpLink = "SerializationManagerNoMatchingCtor"
                     };
@@ -641,10 +634,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                     }
                     if (obj != null && this.session != null)
                     {
-                        if (this.serializers == null)
-                        {
-                            this.serializers = new Hashtable();
-                        }
+                        this.serializers ??= [];
                         this.serializers[objectType] = obj;
                     }
                 }
@@ -662,10 +652,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                         ((IDesignerSerializationManager)this).AddSerializationProvider(designerSerializationProvider);
                     }
                 }
-                if (this.defaultProviderTable == null)
-                {
-                    this.defaultProviderTable = new Hashtable();
-                }
+                this.defaultProviderTable ??= [];
                 this.defaultProviderTable[serializerType] = type;
             }
             if (this.designerSerializationProviders != null)
@@ -712,15 +699,12 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
         protected virtual Type GetType(string typeName)
         {
             Type type = this.GetRuntimeType(typeName);
-            if (type != null)
+            if (type != null && this.GetService(typeof(TypeDescriptionProviderService)) is TypeDescriptionProviderService typeDescriptionProviderService)
             {
-                if (this.GetService(typeof(TypeDescriptionProviderService)) is TypeDescriptionProviderService typeDescriptionProviderService)
+                TypeDescriptionProvider typeDescriptionProvider = typeDescriptionProviderService.GetProvider(type);
+                if (!typeDescriptionProvider.IsSupportedType(type))
                 {
-                    TypeDescriptionProvider typeDescriptionProvider = typeDescriptionProviderService.GetProvider(type);
-                    if (!typeDescriptionProvider.IsSupportedType(type))
-                    {
-                        type = null;
-                    }
+                    type = null;
                 }
             }
             return type;
@@ -736,16 +720,10 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                 this.typeResolver = (this.GetService(typeof(ITypeResolutionService)) as ITypeResolutionService);
                 this.searchedTypeResolver = true;
             }
-            Type type;
-            if (this.typeResolver == null)
-            {
-                type = Type.GetType(typeName);
-            }
-            else
-            {
-                type = this.typeResolver.GetType(typeName);
-            }
-            return type;
+
+            return this.typeResolver == null
+                ? Type.GetType(typeName)
+                : this.typeResolver.GetType(typeName);
         }
 
         /// <summary>Raises the <see cref="E:System.ComponentModel.Design.Serialization.IDesignerSerializationManager.ResolveName" /> event. </summary>
@@ -800,16 +778,13 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
         }
 
         /// <summary>Adds a custom serialization provider to the serialization manager.</summary>
-        /// <param name="provider">The serialization provider to add.</param>
-        void IDesignerSerializationManager.AddSerializationProvider(IDesignerSerializationProvider provider)
+        /// <param name="serializationProvider">The serialization provider to add.</param>
+        void IDesignerSerializationManager.AddSerializationProvider(IDesignerSerializationProvider serializationProvider)
         {
-            if (this.designerSerializationProviders == null)
+            this.designerSerializationProviders ??= [];
+            if (!this.designerSerializationProviders.Contains(serializationProvider))
             {
-                this.designerSerializationProviders = new ArrayList();
-            }
-            if (!this.designerSerializationProviders.Contains(provider))
-            {
-                this.designerSerializationProviders.Add(provider);
+                this.designerSerializationProviders.Add(serializationProvider);
             }
         }
 
@@ -824,20 +799,20 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
             this.CheckSession();
             if (name != null && this.instancesByName != null && this.instancesByName.ContainsKey(name))
             {
-                throw new SerializationException(SR.GetString("SerializationManagerDuplicateComponentDecl", new object[]
-                {
+                throw new SerializationException(SR.GetString("SerializationManagerDuplicateComponentDecl",
+                [
                     name
-                }))
+                ]))
                 {
                     HelpLink = "SerializationManagerDuplicateComponentDecl"
                 };
             }
             object obj = this.CreateInstance(type, arguments, name, addToContainer);
-            if (name != null && (!(obj is IComponent) || !this.RecycleInstances))
+            if (name != null && (obj is not IComponent || !this.RecycleInstances))
             {
                 if (this.instancesByName == null)
                 {
-                    this.instancesByName = new Hashtable();
+                    this.instancesByName = [];
                     this.namesByInstance = new Hashtable(new DesignerSerializationManager.ReferenceComparer());
                 }
                 this.instancesByName[name] = obj;
@@ -870,7 +845,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
             }
             if (obj == null)
             {
-                ResolveNameEventArgs resolveNameEventArgs = new ResolveNameEventArgs(name);
+                ResolveNameEventArgs resolveNameEventArgs = new(name);
                 this.OnResolveName(resolveNameEventArgs);
                 obj = resolveNameEventArgs.Value;
             }
@@ -900,14 +875,9 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                 ISite site = component.Site;
                 if (site != null)
                 {
-                    if (site is INestedSite nestedSite)
-                    {
-                        text = nestedSite.FullName;
-                    }
-                    else
-                    {
-                        text = site.Name;
-                    }
+                    text = site is INestedSite nestedSite
+                        ? nestedSite.FullName
+                        : site.Name;
                 }
             }
             return text;
@@ -947,10 +917,10 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
         }
 
         /// <summary>Removes a previously added serialization provider.</summary>
-        /// <param name="provider">The <see cref="T:System.ComponentModel.Design.Serialization.IDesignerSerializationProvider" /> to remove.</param>
-        void IDesignerSerializationManager.RemoveSerializationProvider(IDesignerSerializationProvider provider)
+        /// <param name="serializationProvider">The <see cref="T:System.ComponentModel.Design.Serialization.IDesignerSerializationProvider" /> to remove.</param>
+        void IDesignerSerializationManager.RemoveSerializationProvider(IDesignerSerializationProvider serializationProvider)
         {
-            this.designerSerializationProviders?.Remove(provider);
+            this.designerSerializationProviders?.Remove(serializationProvider);
         }
 
         /// <summary>Used to report a recoverable error in serialization.</summary>
@@ -984,23 +954,23 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
             }
             if (this.instancesByName == null)
             {
-                this.instancesByName = new Hashtable();
+                this.instancesByName = [];
                 this.namesByInstance = new Hashtable(new DesignerSerializationManager.ReferenceComparer());
             }
             if (this.instancesByName[name] != null)
             {
-                throw new ArgumentException(SR.GetString("SerializationManagerNameInUse", new object[]
-                {
+                throw new ArgumentException(SR.GetString("SerializationManagerNameInUse",
+                [
                     name
-                }));
+                ]));
             }
             if (this.namesByInstance[instance] != null)
             {
-                throw new ArgumentException(SR.GetString("SerializationManagerObjectHasName", new object[]
-                {
+                throw new ArgumentException(SR.GetString("SerializationManagerObjectHasName",
+                [
                     name,
                     (string)this.namesByInstance[instance]
-                }));
+                ]));
             }
             this.instancesByName[name] = instance;
             this.namesByInstance[instance] = name;
