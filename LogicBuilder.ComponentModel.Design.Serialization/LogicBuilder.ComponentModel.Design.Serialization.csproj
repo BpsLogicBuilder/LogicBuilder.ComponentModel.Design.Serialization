@@ -7,18 +7,25 @@
     <RootNamespace>LogicBuilder.ComponentModel.Design.Serialization</RootNamespace>
     <Description>Implements DesignerSerializationManager for .NetStandard.</Description>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>Handling validation for optional parameters.</PackageReleaseNotes>
+    <PackageReleaseNotes>Refactoring to accelrate DevOps.</PackageReleaseNotes>
     <PackageTags>serialization</PackageTags>
     <Copyright>Copyright © Microsoft 2017</Copyright>
     <RepositoryUrl>https://github.com/BpsLogicBuilder/LogicBuilder.ComponentModel.Design.Serialization</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/BpsLogicBuilder/LogicBuilder</PackageProjectUrl>
+		<PackageIcon>icon.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
     <MinVerTagPrefix>v</MinVerTagPrefix>
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
 		<SignAssembly>true</SignAssembly>
 		<AssemblyOriginatorKeyFile>..\LogicBuilder.Rules.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
+
+	<ItemGroup>
+		<None Include="..\README.md" Pack="true" PackagePath="\" />
+		<None Include="..\icon.png" Pack="true" PackagePath="\" Visible="False"/>
+	</ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MinVer" Version="7.0.0">
