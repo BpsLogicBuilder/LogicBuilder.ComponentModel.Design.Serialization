@@ -53,6 +53,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -68,6 +70,6 @@ jobs:
       - name: Publish to GitHub Packages
         run: |
           dotnet pack --configuration Release --no-build -o ./nupkg
-          dotnet nuget push ./nupkg/*.nupkg --source "github" --api-key ${{ secrets.GITHUB_TOKEN }}
+          dotnet nuget push ./nupkg/*.nupkg --skip-duplicate --api-key ${{ secrets.GITHUB_TOKEN }}
         env:
           NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
