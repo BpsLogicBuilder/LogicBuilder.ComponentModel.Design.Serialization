@@ -61,6 +61,8 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
           source-url: https://nuget.pkg.github.com/bpsLogicBuilder/index.json
+        env:
+          NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Restore dependencies
         run: dotnet restore
