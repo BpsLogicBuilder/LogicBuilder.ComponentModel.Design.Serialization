@@ -474,8 +474,11 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                     {
                         obj = TypeDescriptor.CreateInstance(this.provider, type, null, array);
                     }
-                    catch (MissingMethodException ex)
+                    catch (MissingMethodException)
                     {
+                        if (array == null || array.Length == 0)
+                            throw;
+
                         Type[] array2 = new Type[array.Length];
                         for (int i = 0; i < array.Length; i++)
                         {
@@ -523,7 +526,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                         }
                         if (obj == null)
                         {
-                            throw ex;
+                            throw;
                         }
                     }
                 }
@@ -937,7 +940,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                     {
                         break;
                     }
-                    typeName = typeName.Substring(0, num) + "+" + typeName.Substring(num + 1, typeName.Length - num - 1);
+                    typeName = $"{typeName.Substring(0, num)}{typeName.Substring(num + 1, typeName.Length - num - 1)}";
                 }
             }
             return type;
