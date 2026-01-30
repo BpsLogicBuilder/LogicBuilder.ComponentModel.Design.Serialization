@@ -1827,32 +1827,32 @@
 
         public static object GetObject(string name)
         {
-            LogicBuilder.ComponentModel.Design.Serialization.SR loader = GetLoader();
-            if (loader == null)
+            LogicBuilder.ComponentModel.Design.Serialization.SR loaderLocal = GetLoader();
+            if (loaderLocal == null)
             {
                 return null;
             }
-            return loader.resources.GetObject(name, Culture);
+            return loaderLocal.resources.GetObject(name, Culture);
         }
 
         public static string GetString(string name)
         {
-            LogicBuilder.ComponentModel.Design.Serialization.SR loader = GetLoader();
-            if (loader == null)
+            LogicBuilder.ComponentModel.Design.Serialization.SR loaderLocal = GetLoader();
+            if (loaderLocal == null)
             {
                 return null;
             }
-            return loader.resources.GetString(name, Culture);
+            return loaderLocal.resources.GetString(name, Culture);
         }
 
         public static string GetString(string name, params object[] args)
         {
-            LogicBuilder.ComponentModel.Design.Serialization.SR loader = GetLoader();
-            if (loader == null)
+            LogicBuilder.ComponentModel.Design.Serialization.SR loaderLocal = GetLoader();
+            if (loaderLocal == null)
             {
                 return null;
             }
-            string format = loader.resources.GetString(name, Culture);
+            string format = loaderLocal.resources.GetString(name, Culture);
             if ((args == null) || (args.Length <= 0))
             {
                 return format;
