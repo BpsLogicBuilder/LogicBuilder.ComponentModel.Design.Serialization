@@ -62,13 +62,22 @@ jobs:
         env:
           NUGET_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: NuGet login
+        uses: NuGet/login@v1
+        id: nuget_login
+        with:
+          user: ${{ secrets.NUGET_USER }}
+
       - name: Restore dependencies
         run: dotnet restore
 
       - name: Build project
         run: dotnet build --no-restore --configuration Release
 
-      - name: Publish to GitHub Packages
+      - name: Publish Packages
         run: |
           dotnet pack --configuration Release --no-build -o ./nupkg
           dotnet nuget push ./nupkg/*.nupkg --skip-duplicate --api-key ${{ secrets.GITHUB_TOKEN }}
+          dotnet nuget push ./nupkg/*.nupkg --skip-duplicate --source ${{ env.NUGET_URL }} --api-key ${{ steps.nuget_login.outputs.NUGET_API_KEY }}
+        env:
+          NUGET_URL: 'https://api.nuget.org/v3/index.json'
