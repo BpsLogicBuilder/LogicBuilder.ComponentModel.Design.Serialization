@@ -1,4 +1,4 @@
-# LogicBuilder.Workflow.ComponentModel.Serialization
+# LogicBuilder.ComponentModel.Design.Serialization
 
 [![Build Status](https://github.com/BpsLogicBuilder/LogicBuilder.ComponentModel.Design.Serialization/actions/workflows/ci.yml/badge.svg)](https://github.com/BpsLogicBuilder/LogicBuilder.ComponentModel.Design.Serialization/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/BpsLogicBuilder/LogicBuilder.ComponentModel.Design.Serialization/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/BpsLogicBuilder/LogicBuilder.ComponentModel.Design.Serialization/actions/workflows/github-code-scanning/codeql)
