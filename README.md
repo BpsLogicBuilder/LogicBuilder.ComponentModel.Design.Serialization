@@ -2,6 +2,7 @@
 
 [![Build Status](https://github.com/BpsLogicBuilder/LogicBuilder.ComponentModel.Design.Serialization/actions/workflows/ci.yml/badge.svg)](https://github.com/BpsLogicBuilder/LogicBuilder.ComponentModel.Design.Serialization/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/BpsLogicBuilder/LogicBuilder.ComponentModel.Design.Serialization/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/BpsLogicBuilder/LogicBuilder.ComponentModel.Design.Serialization/actions/workflows/github-code-scanning/codeql)
+[![codecov](https://codecov.io/gh/BpsLogicBuilder/LogicBuilder.ComponentModel.Design.Serialization/graph/badge.svg?token=PFDB2PEVZT)](https://codecov.io/gh/BpsLogicBuilder/LogicBuilder.ComponentModel.Design.Serialization)
 [![NuGet](https://img.shields.io/nuget/v/LogicBuilder.ComponentModel.Design.Serialization.svg)](https://www.nuget.org/packages/LogicBuilder.ComponentModel.Design.Serialization)
 
 ## Serialization Management
