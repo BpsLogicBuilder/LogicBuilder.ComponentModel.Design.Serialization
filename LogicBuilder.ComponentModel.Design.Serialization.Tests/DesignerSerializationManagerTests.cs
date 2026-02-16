@@ -624,6 +624,22 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         }
 
         [Fact]
+        public void CreateInstance_ThrowsSerializationExceptionForMissingConstructor_WithNullParameters()
+        {
+            // Arrange
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager();
+
+            // Act & Assert
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var exception = Assert.Throws<System.Runtime.Serialization.SerializationException>(() =>
+                    manager.CreateInstance(typeof(TestClassWithConstructor), null, "test", false));
+
+                Assert.Contains("TestClassWithConstructor", exception.Message);
+            }
+        }
+
+        [Fact]
         public void CreateInstance_ConvertsParametersForConstructor()
         {
             // Arrange
