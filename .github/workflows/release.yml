@@ -50,6 +50,7 @@ jobs:
   publish-github-packages:
     name: Publish Package to GitHub Packages and NuGet.org
     runs-on: ubuntu-latest
+    if: github.repository_owner == 'BpsLogicBuilder'
     permissions:
       contents: read
       packages: write

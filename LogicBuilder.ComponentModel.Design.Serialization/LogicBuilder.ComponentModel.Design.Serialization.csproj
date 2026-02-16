@@ -14,7 +14,7 @@
     <RootNamespace>LogicBuilder.ComponentModel.Design.Serialization</RootNamespace>
     <Description>Implements DesignerSerializationManager for .NetStandard.</Description>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>Refactoring to accelrate DevOps.</PackageReleaseNotes>
+    <PackageReleaseNotes>Fixes to improve maintainability and reliability.</PackageReleaseNotes>
     <PackageTags>serialization</PackageTags>
     <Copyright>Copyright © Microsoft 2017</Copyright>
     <RepositoryUrl>https://github.com/BpsLogicBuilder/LogicBuilder.ComponentModel.Design.Serialization</RepositoryUrl>
