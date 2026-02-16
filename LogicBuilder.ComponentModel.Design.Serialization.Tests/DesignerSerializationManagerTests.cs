@@ -131,7 +131,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         {
             // Arrange
             var manager = new DesignerSerializationManager();
-            var container = new Container();
+            using var container = new Container();
 
             // Act
             manager.Container = container;
@@ -145,7 +145,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         {
             // Arrange
             var manager = new DesignerSerializationManager();
-            var container = new Container();
+            using var container = new Container();
             using (manager.CreateSession())
             {
                 // Act & Assert
@@ -157,7 +157,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         public void Container_GetsFromDesignerHostWhenNull()
         {
             // Arrange
-            var container = new Container();
+            using var container = new Container();
             var mockHost = new Mock<IDesignerHost>();
             mockHost.Setup(h => h.Container).Returns(container);
             
@@ -462,7 +462,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         public void CreateInstance_RecyclesFromContainerWhenAvailable()
         {
             // Arrange
-            var container = new Container();
+            using var container = new Container();
             var existingComponent = new TestComponent();
             container.Add(existingComponent, "test");
 
@@ -481,10 +481,32 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         }
 
         [Fact]
+        public void CreateInstance_RecyclesFromContainerWhenAvailable_ObjectTypeDoesNotMatch()
+        {
+            // Arrange
+            using var container = new Container();
+            var existingComponent = new TestComponent();
+            container.Add(existingComponent, "test");
+
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager
+            {
+                RecycleInstances = true,
+                Container = container
+            };
+
+            // Act & Assert
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var instance = manager.CreateInstance(typeof(TestClass), null, "test", true);
+                Assert.NotSame(existingComponent, instance);
+            }
+        }
+
+        [Fact]
         public void CreateInstance_UsesDesignerHostToCreateComponent()
         {
             // Arrange
-            var container = new Container();
+            using var container = new Container();
             var mockHost = new Mock<IDesignerHost>();
             mockHost.Setup(h => h.Container).Returns(container);
             mockHost.Setup(h => h.CreateComponent(typeof(TestComponent), "test"))
@@ -513,7 +535,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         public void CreateInstance_UsesDesignerHostWithoutNameWhenPreserveNamesIsFalseAndNameExists()
         {
             // Arrange
-            var container = new Container();
+            using var container = new Container();
             container.Add(new TestComponent(), "test");
             
             var mockHost = new Mock<IDesignerHost>();
@@ -545,7 +567,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         public void CreateInstance_AddsComponentToContainerWhenNotCreatedByHost()
         {
             // Arrange
-            var container = new Container();
+            using var container = new Container();
             var manager = (IDesignerSerializationManager)new DesignerSerializationManager
             {
                 Container = container
@@ -565,7 +587,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         public void CreateInstance_AddsComponentWithoutNameWhenPreserveNamesIsFalseAndNameExists()
         {
             // Arrange
-            var container = new Container();
+            using var container = new Container();
             container.Add(new TestComponent(), "test");
             
             var manager = (IDesignerSerializationManager)new DesignerSerializationManager
@@ -661,7 +683,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         public void GetInstance_ReturnsFromContainerWhenPreserveNamesIsTrue()
         {
             // Arrange
-            var container = new Container();
+            using var container = new Container();
             var component = new TestComponent();
             container.Add(component, "test");
 
@@ -721,7 +743,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         public void GetName_ReturnsNameFromComponentSite()
         {
             // Arrange
-            var container = new Container();
+            using var container = new Container();
             var component = new TestComponent();
             container.Add(component, "test");
 
@@ -1109,7 +1131,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         public void IServiceProvider_GetService_ReturnsContainer()
         {
             // Arrange
-            var container = new Container();
+            using var container = new Container();
             var manager = (IServiceProvider)new DesignerSerializationManager
             {
                 Container = container
