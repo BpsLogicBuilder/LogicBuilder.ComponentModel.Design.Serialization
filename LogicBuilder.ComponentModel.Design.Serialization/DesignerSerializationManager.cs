@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.ComponentModel.Design;
 using System.ComponentModel.Design.Serialization;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
@@ -426,6 +427,184 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                 array = new object[arguments.Count];
                 arguments.CopyTo(array, 0);
             }
+            object obj = GetFromRecycledInstances(type, name, addToContainer);
+            if (obj != null)
+                return obj;
+
+            obj = CreateObjectFromDesignerHost(type, name, addToContainer, array);
+            if (obj != null)
+                return obj;
+
+            return CreateFromTypeDescriptor(type, name, addToContainer, array);
+        }
+
+        private object CreateFromTypeDescriptor(Type type, string name, bool addToContainer, object[] array)
+        {
+            object obj = null;
+            try
+            {
+                try
+                {
+                    obj = TypeDescriptor.CreateInstance(this.serviceProvider, type, null, array);
+                }
+                catch (MissingMethodException ex)
+                {
+                    if (array == null || array.Length == 0)
+                        throw;
+
+                    obj = GetObjectFromParameterConversion(type, array, ex);
+                }
+            }
+            catch (MissingMethodException)
+            {
+                HandleMissingMethodException(type, array);
+            }
+            if (addToContainer && obj is IComponent component && this.Container != null)
+            {
+                bool flag3 = false;
+                if (!this.PreserveNames && name != null && this.Container.Components[name] != null)
+                {
+                    flag3 = true;
+                }
+                if (name == null || flag3)
+                {
+                    this.Container.Add(component);
+                }
+                else
+                {
+                    this.Container.Add(component, name);
+                }
+            }
+
+            return obj;
+        }
+
+        private static void HandleMissingMethodException(Type type, object[] array)
+        {
+            StringBuilder stringBuilder = new();
+            object[] array4 = array;
+            for (int l = 0; array4 != null && l < array4.Length; l++)
+            {
+                object obj2 = array4[l];
+                if (stringBuilder.Length > 0)
+                {
+                    stringBuilder.Append(", ");
+                }
+                if (obj2 != null)
+                {
+                    stringBuilder.Append(obj2.GetType().Name);
+                }
+                else
+                {
+                    stringBuilder.Append("null");
+                }
+            }
+            throw new SerializationException(SR.GetString("SerializationManagerNoMatchingCtor",
+            [
+                type.FullName,
+                        stringBuilder.ToString()
+            ]))
+            {
+                HelpLink = "SerializationManagerNoMatchingCtor"
+            };
+        }
+
+        private object GetObjectFromParameterConversion(Type type, object[] array, MissingMethodException ex)
+        {
+            ConstructorInfo[] constructors = TypeDescriptor.GetReflectionType(type).GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.CreateInstance);
+            object obj = GetObjectFromParameters(type, array, constructors);
+            return obj ?? throw new MissingMethodException("Failed to create instance", ex);
+        }
+
+        private object GetObjectFromParameters(Type type, object[] array, ConstructorInfo[] constructors)
+        {
+            Type[] array2 = GetTypeArray(array);
+            object[] array3 = new object[array.Length];
+            object obj = null;
+            for (int j = 0; j < constructors.Length; j++)
+            {
+                ConstructorInfo constructorInfo = constructors[j];
+                ParameterInfo[] parameters = constructorInfo.GetParameters();
+                if (parameters?.Length != array2.Length)
+                {
+                    continue;
+                }
+
+                if (GetParameter(array, array2, array3, parameters))
+                {
+                    obj = TypeDescriptor.CreateInstance(this.serviceProvider, type, null, array3);
+                    break;
+                }
+            }
+
+            return obj;
+        }
+
+        private static bool GetParameter(object[] array, Type[] array2, object[] array3, ParameterInfo[] parameters)
+        {
+            for (int k = 0; k < array2.Length; k++)
+            {
+                if (array2[k] == null || parameters[k].ParameterType.IsAssignableFrom(array2[k]))
+                {
+                    array3[k] = array[k];
+                    continue;
+                }
+
+                if (array[k] is not IConvertible convertible)
+                    return false;
+
+                try
+                {
+                    array3[k] = convertible.ToType(parameters[k].ParameterType, null);
+                }
+                catch (Exception e) when (e is FormatException || e is InvalidCastException)
+                {
+                    // Type conversion failed - this constructor parameter doesn't match.
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static Type[] GetTypeArray(object[] array)
+        {
+            Type[] array2 = new Type[array.Length];
+            for (int i = 0; i < array.Length; i++)
+            {
+                if (array[i] != null)
+                {
+                    array2[i] = array[i].GetType();
+                }
+            }
+
+            return array2;
+        }
+
+        private object CreateObjectFromDesignerHost(Type type, string name, bool addToContainer, object[] array)
+        {
+            object obj = null;
+            if (addToContainer
+                    && typeof(IComponent).IsAssignableFrom(type)
+                    && (array == null || array.Length == 0 || (array.Length == 1 && array[0] == this.Container))
+                    && this.GetService(typeof(IDesignerHost)) is IDesignerHost designerHost && designerHost.Container == this.Container)
+            {
+                bool flag = false;
+                if (!this.PreserveNames && name != null && this.Container.Components[name] != null)
+                {
+                    flag = true;
+                }
+
+                obj = (name == null || flag)
+                    ? designerHost.CreateComponent(type)
+                    : designerHost.CreateComponent(type, name);
+            }
+
+            return obj;
+        }
+
+        private object GetFromRecycledInstances(Type type, string name, bool addToContainer)
+        {
             object obj = null;
             if (this.RecycleInstances && name != null)
             {
@@ -442,138 +621,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                     obj = null;
                 }
             }
-            if (obj == null && addToContainer 
-                && typeof(IComponent).IsAssignableFrom(type) 
-                && (array == null || array.Length == 0 || (array.Length == 1 && array[0] == this.Container))
-                && this.GetService(typeof(IDesignerHost)) is IDesignerHost designerHost && designerHost.Container == this.Container)
-            {
-                bool flag = false;
-                if (!this.PreserveNames && name != null && this.Container.Components[name] != null)
-                {
-                    flag = true;
-                }
 
-                obj = (name == null || flag) 
-                    ? designerHost.CreateComponent(type) 
-                    : designerHost.CreateComponent(type, name);
-            }
-            if (obj == null)
-            {
-                try
-                {
-                    try
-                    {
-                        obj = TypeDescriptor.CreateInstance(this.serviceProvider, type, null, array);
-                    }
-                    catch (MissingMethodException)
-                    {
-                        if (array == null || array.Length == 0)
-                            throw;
-
-                        Type[] array2 = new Type[array.Length];
-                        for (int i = 0; i < array.Length; i++)
-                        {
-                            if (array[i] != null)
-                            {
-                                array2[i] = array[i].GetType();
-                            }
-                        }
-                        object[] array3 = new object[array.Length];
-                        ConstructorInfo[] constructors = TypeDescriptor.GetReflectionType(type).GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.CreateInstance);
-                        for (int j = 0; j < constructors.Length; j++)
-                        {
-                            ConstructorInfo constructorInfo = constructors[j];
-                            ParameterInfo[] parameters = constructorInfo.GetParameters();
-                            if (parameters != null && parameters.Length == array2.Length)
-                            {
-                                bool flag2 = true;
-                                for (int k = 0; k < array2.Length; k++)
-                                {
-                                    if (array2[k] != null && !parameters[k].ParameterType.IsAssignableFrom(array2[k]))
-                                    {
-                                        if (array[k] is IConvertible convertible)
-                                        {
-                                            try
-                                            {
-                                                array3[k] = convertible.ToType(parameters[k].ParameterType, null);
-                                            }
-                                            catch (Exception e) when (e is FormatException || e is InvalidCastException)
-                                            {
-                                                // Type conversion failed - this constructor parameter doesn't match.
-                                                flag2 = false;
-                                                break;
-                                            }
-                                        }
-                                        else
-                                        {
-                                            flag2 = false;
-                                            break;
-                                        } 
-                                    }
-                                    else
-                                    {
-                                        array3[k] = array[k];
-                                    }
-                                }
-                                if (flag2)
-                                {
-                                    obj = TypeDescriptor.CreateInstance(this.serviceProvider, type, null, array3);
-                                    break;
-                                }
-                            }
-                        }
-                        if (obj == null)
-                        {
-                            throw;
-                        }
-                    }
-                }
-                catch (MissingMethodException)
-                {
-                    StringBuilder stringBuilder = new();
-                    object[] array4 = array;
-                    for (int l = 0; array4 != null && l < array4.Length; l++)
-                    {
-                        object obj2 = array4[l];
-                        if (stringBuilder.Length > 0)
-                        {
-                            stringBuilder.Append(", ");
-                        }
-                        if (obj2 != null)
-                        {
-                            stringBuilder.Append(obj2.GetType().Name);
-                        }
-                        else
-                        {
-                            stringBuilder.Append("null");
-                        }
-                    }
-                    throw new SerializationException(SR.GetString("SerializationManagerNoMatchingCtor",
-                    [
-                        type.FullName,
-                        stringBuilder.ToString()
-                    ]))
-                    {
-                        HelpLink = "SerializationManagerNoMatchingCtor"
-                    };
-                }
-                if (addToContainer && obj is IComponent component && this.Container != null)
-                {
-                    bool flag3 = false;
-                    if (!this.PreserveNames && name != null && this.Container.Components[name] != null)
-                    {
-                        flag3 = true;
-                    }
-                    if (name == null || flag3)
-                    {
-                        this.Container.Add(component);
-                    }
-                    else
-                    {
-                        this.Container.Add(component, name);
-                    }
-                }
-            }
             return obj;
         }
 
@@ -606,79 +654,94 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
             object obj = null;
             if (objectType != null)
             {
-                if (this.serializers != null)
-                {
-                    obj = this.serializers[objectType];
-                    if (obj != null && !serializerType.IsInstanceOfType(obj))
-                    {
-                        obj = null;
-                    }
-                }
-                if (obj == null)
-                {
-                    AttributeCollection attributes = TypeDescriptor.GetAttributes(objectType);
-                    foreach (Attribute attribute in attributes)
-                    {
-                        if (attribute is DesignerSerializerAttribute designerSerializerAttribute)
-                        {
-                            string serializerBaseTypeName = designerSerializerAttribute.SerializerBaseTypeName;
-                            if (serializerBaseTypeName != null)
-                            {
-                                Type runtimeType = this.GetRuntimeType(serializerBaseTypeName);
-                                if (runtimeType == serializerType && designerSerializerAttribute.SerializerTypeName != null && designerSerializerAttribute.SerializerTypeName.Length > 0)
-                                {
-                                    Type runtimeType2 = this.GetRuntimeType(designerSerializerAttribute.SerializerTypeName);
-                                    if (runtimeType2 != null)
-                                    {
-                                        obj = Activator.CreateInstance(runtimeType2, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.CreateInstance, null, null, null);// NOSONAR
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if (obj != null && this.session != null)
-                    {
-                        this.serializers ??= [];
-                        this.serializers[objectType] = obj;
-                    }
-                }
+                obj = GetSerializerFromSerializerTypeName(objectType, serializerType, obj);
             }
             if (this.defaultProviderTable == null || !this.defaultProviderTable.ContainsKey(serializerType))
             {
-                Type type = null;
-                DefaultSerializationProviderAttribute defaultSerializationProviderAttribute = (DefaultSerializationProviderAttribute)TypeDescriptor.GetAttributes(serializerType)[typeof(DefaultSerializationProviderAttribute)];
-                if (defaultSerializationProviderAttribute != null)
-                {
-                    type = this.GetRuntimeType(defaultSerializationProviderAttribute.ProviderTypeName);
-                    if (type != null && typeof(IDesignerSerializationProvider).IsAssignableFrom(type))
-                    {
-                        IDesignerSerializationProvider designerSerializationProvider = (IDesignerSerializationProvider)Activator.CreateInstance(type, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.CreateInstance, null, null, null);// NOSONAR
-                        ((IDesignerSerializationManager)this).AddSerializationProvider(designerSerializationProvider);
-                    }
-                }
-                this.defaultProviderTable ??= [];
-                this.defaultProviderTable[serializerType] = type;
+                UpdateDefaultProviderTable(serializerType);
             }
             if (this.designerSerializationProviders != null)
             {
-                bool flag = true;
-                int num = 0;
-                while (flag && num < this.designerSerializationProviders.Count)
+                obj = GetSerializerFromSerializationProviders(objectType, serializerType, obj);
+            }
+            return obj;
+        }
+
+        private object GetSerializerFromSerializationProviders(Type objectType, Type serializerType, object obj)
+        {
+            bool flag = true;
+            int num = 0;
+            while (flag && num < this.designerSerializationProviders.Count)
+            {
+                flag = false;
+                foreach (IDesignerSerializationProvider designerSerializationProvider2 in this.designerSerializationProviders)
                 {
-                    flag = false;
-                    foreach (IDesignerSerializationProvider designerSerializationProvider2 in this.designerSerializationProviders)
+                    object serializer = designerSerializationProvider2.GetSerializer(this, obj, objectType, serializerType);
+                    if (serializer != null)
                     {
-                        object serializer = designerSerializationProvider2.GetSerializer(this, obj, objectType, serializerType);
-                        if (serializer != null)
-                        {
-                            flag = (obj != serializer);
-                            obj = serializer;
-                        }
+                        flag = (obj != serializer);
+                        obj = serializer;
                     }
-                    num++;
+                }
+                num++;
+            }
+
+            return obj;
+        }
+
+        private void UpdateDefaultProviderTable(Type serializerType)
+        {
+            Type type = null;
+            DefaultSerializationProviderAttribute defaultSerializationProviderAttribute = (DefaultSerializationProviderAttribute)TypeDescriptor.GetAttributes(serializerType)[typeof(DefaultSerializationProviderAttribute)];
+            if (defaultSerializationProviderAttribute != null)
+            {
+                type = this.GetRuntimeType(defaultSerializationProviderAttribute.ProviderTypeName);
+                if (type != null && typeof(IDesignerSerializationProvider).IsAssignableFrom(type))
+                {
+                    IDesignerSerializationProvider designerSerializationProvider = (IDesignerSerializationProvider)Activator.CreateInstance(type, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.CreateInstance, null, null, null);// NOSONAR
+                    ((IDesignerSerializationManager)this).AddSerializationProvider(designerSerializationProvider);
                 }
             }
+            this.defaultProviderTable ??= [];
+            this.defaultProviderTable[serializerType] = type;
+        }
+
+        private object GetSerializerFromSerializerTypeName(Type objectType, Type serializerType, object obj)
+        {
+            if (this.serializers != null)
+            {
+                obj = this.serializers[objectType];
+                if (obj != null && !serializerType.IsInstanceOfType(obj))
+                {
+                    obj = null;
+                }
+            }
+
+            if (obj != null)
+                return obj;
+
+            AttributeCollection attributes = TypeDescriptor.GetAttributes(objectType);
+            foreach (DesignerSerializerAttribute designerSerializerAttribute in attributes.OfType<DesignerSerializerAttribute>())
+            {
+                string serializerBaseTypeName = designerSerializerAttribute.SerializerBaseTypeName;
+                if (serializerBaseTypeName != null
+                    && this.GetRuntimeType(serializerBaseTypeName) == serializerType
+                    && designerSerializerAttribute.SerializerTypeName?.Length > 0)
+                {
+                    Type runtimeType2 = this.GetRuntimeType(designerSerializerAttribute.SerializerTypeName);
+                    if (runtimeType2 != null)
+                    {
+                        obj = Activator.CreateInstance(runtimeType2, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.CreateInstance, null, null, null);// NOSONAR
+                        break;
+                    }
+                }
+            }
+            if (obj != null && this.session != null)
+            {
+                this.serializers ??= [];
+                this.serializers[objectType] = obj;
+            }
+
             return obj;
         }
 
