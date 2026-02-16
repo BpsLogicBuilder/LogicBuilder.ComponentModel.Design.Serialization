@@ -642,6 +642,36 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         }
 
         [Fact]
+        public void CreateInstance_ConvertsParametersForConstructor_WithConstructorParameterNotConvertable()
+        {
+            // Arrange
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager();
+
+            // Act
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                // Assert
+                Assert.Throws<System.Runtime.Serialization.SerializationException>(() =>
+                    manager.CreateInstance(typeof(TestClassWithConstructorWithNotConvertibleParameter), new object[] { 42, 43, new TestClass { Name = "Test" } }, "test", false));
+            }
+        }
+
+        [Fact]
+        public void CreateInstance_ConvertsParametersForConstructor_WithConstructorParameterThrowingInvalidCastException()
+        {
+            // Arrange
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager();
+
+            // Act
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                // Assert
+                Assert.Throws<System.Runtime.Serialization.SerializationException>(() =>
+                    manager.CreateInstance(typeof(TestClassWithConstructorWithParameteInvalidCastException), new object[] { 42, 43, "44" }, "test", false));
+            }
+        }
+
+        [Fact]
         public void GetInstance_ReturnsInstanceByName()
         {
             // Arrange
@@ -1054,6 +1084,23 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         }
 
         [Fact]
+        public void GetSerializer_CachesSerializerDuringSession_WithUnAssignableSubclasss()
+        {
+            // Arrange
+            var manager = new DesignerSerializationManager();
+
+            // Act
+            using (manager.CreateSession())
+            {
+                var serializer1 = manager.GetSerializer(typeof(TestClassWithSerializer), typeof(TestSerializer));
+                var serializer2 = manager.GetSerializer(typeof(TestClassWithSerializer), typeof(TestSerializerSubclass));
+
+                // Assert
+                Assert.NotSame(serializer1, serializer2);
+            }
+        }
+
+        [Fact]
         public void GetSerializer_UsesCustomSerializationProvider()
         {
             // Arrange
@@ -1175,9 +1222,27 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
             public string Name { get; set; } = string.Empty;
         }
 
+        private class TestClass3 : TestClass
+        {
+        }
+
         private class TestClassWithConstructor(string value)
         {
             public string Value { get; } = value;
+        }
+
+        private class TestClassWithConstructorWithNotConvertibleParameter(string value1, int value2, TestClass3 value3)
+        {
+            public string Value1 { get; } = value1;
+            public int Value2 { get; } = value2;
+            public TestClass Value3 { get; } = value3;
+        }
+
+        private class TestClassWithConstructorWithParameteInvalidCastException(string value1, int value2, DateTime value3)
+        {
+            public string Value1 { get; } = value1;
+            public int Value2 { get; } = value2;
+            public DateTime Value4 { get; } = value3;
         }
 
         private class TestComponent : Component
@@ -1194,6 +1259,11 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         {
         }
 
+        [DesignerSerializer(typeof(TestClass), typeof(TestClass))]
+        private class TestClassWithIncorrectSerializer
+        {
+        }
+
         [DefaultSerializationProvider(typeof(TestDefaultSerializationProvider))]
         private class TestSerializerWithDefaultProvider
         {
@@ -1204,6 +1274,10 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         }
 
         private class TestSerializer
+        {
+        }
+
+        private class TestSerializerSubclass : TestSerializer
         {
         }
 
