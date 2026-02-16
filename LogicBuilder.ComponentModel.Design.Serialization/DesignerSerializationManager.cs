@@ -40,11 +40,11 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                 return x == y;
             }
 
-            int IEqualityComparer.GetHashCode(object x)
+            int IEqualityComparer.GetHashCode(object obj)
             {
-                if (x != null)
+                if (obj != null)
                 {
-                    return x.GetHashCode();
+                    return obj.GetHashCode();
                 }
                 return 0;
             }
@@ -121,7 +121,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
             }
         }
 
-        private readonly IServiceProvider provider;
+        private readonly IServiceProvider serviceProvider;
 
         private ITypeResolutionService typeResolver;
 
@@ -389,7 +389,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
         ///   <paramref name="provider" /> is null.</exception>
         public DesignerSerializationManager(IServiceProvider provider)
         {
-            this.provider = provider ?? throw new ArgumentNullException("provider");
+            this.serviceProvider = provider ?? throw new ArgumentNullException("provider");
             this.preserveNames = true;
             this.validateRecycledTypes = true;
         }
@@ -433,7 +433,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                 {
                     obj = this.instancesByName[name];
                 }
-                if ((obj == null & addToContainer) && this.Container != null)
+                if (obj == null && addToContainer && this.Container != null)
                 {
                     obj = this.Container.Components[name];
                 }
@@ -442,7 +442,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                     obj = null;
                 }
             }
-            if ((obj == null & addToContainer) 
+            if (obj == null && addToContainer 
                 && typeof(IComponent).IsAssignableFrom(type) 
                 && (array == null || array.Length == 0 || (array.Length == 1 && array[0] == this.Container))
                 && this.GetService(typeof(IDesignerHost)) is IDesignerHost designerHost && designerHost.Container == this.Container)
@@ -453,7 +453,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                     flag = true;
                 }
 
-                obj = (name == null | flag) 
+                obj = (name == null || flag) 
                     ? designerHost.CreateComponent(type) 
                     : designerHost.CreateComponent(type, name);
             }
@@ -463,7 +463,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                 {
                     try
                     {
-                        obj = TypeDescriptor.CreateInstance(this.provider, type, null, array);
+                        obj = TypeDescriptor.CreateInstance(this.serviceProvider, type, null, array);
                     }
                     catch (MissingMethodException)
                     {
@@ -512,7 +512,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                                 }
                                 if (flag2)
                                 {
-                                    obj = TypeDescriptor.CreateInstance(this.provider, type, null, array3);
+                                    obj = TypeDescriptor.CreateInstance(this.serviceProvider, type, null, array3);
                                     break;
                                 }
                             }
@@ -559,7 +559,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                     {
                         flag3 = true;
                     }
-                    if (name == null | flag3)
+                    if (name == null || flag3)
                     {
                         this.Container.Add(component);
                     }
@@ -686,9 +686,9 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
             {
                 return this.Container;
             }
-            if (this.provider != null)
+            if (this.serviceProvider != null)
             {
-                return this.provider.GetService(serviceType);
+                return this.serviceProvider.GetService(serviceType);
             }
             return null;
         }
@@ -778,13 +778,13 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
         }
 
         /// <summary>Adds a custom serialization provider to the serialization manager.</summary>
-        /// <param name="serializationProvider">The serialization provider to add.</param>
-        void IDesignerSerializationManager.AddSerializationProvider(IDesignerSerializationProvider serializationProvider)
+        /// <param name="provider">The serialization provider to add.</param>
+        void IDesignerSerializationManager.AddSerializationProvider(IDesignerSerializationProvider provider)
         {
             this.designerSerializationProviders ??= [];
-            if (!this.designerSerializationProviders.Contains(serializationProvider))
+            if (!this.designerSerializationProviders.Contains(provider))
             {
-                this.designerSerializationProviders.Add(serializationProvider);
+                this.designerSerializationProviders.Add(provider);
             }
         }
 
@@ -917,10 +917,10 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
         }
 
         /// <summary>Removes a previously added serialization provider.</summary>
-        /// <param name="serializationProvider">The <see cref="T:System.ComponentModel.Design.Serialization.IDesignerSerializationProvider" /> to remove.</param>
-        void IDesignerSerializationManager.RemoveSerializationProvider(IDesignerSerializationProvider serializationProvider)
+        /// <param name="provider">The <see cref="T:System.ComponentModel.Design.Serialization.IDesignerSerializationProvider" /> to remove.</param>
+        void IDesignerSerializationManager.RemoveSerializationProvider(IDesignerSerializationProvider provider)
         {
-            this.designerSerializationProviders?.Remove(serializationProvider);
+            this.designerSerializationProviders?.Remove(provider);
         }
 
         /// <summary>Used to report a recoverable error in serialization.</summary>
