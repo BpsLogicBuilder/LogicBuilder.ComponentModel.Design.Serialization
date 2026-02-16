@@ -433,7 +433,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                 {
                     obj = this.instancesByName[name];
                 }
-                if ((obj == null & addToContainer) && this.Container != null)
+                if (obj == null && addToContainer && this.Container != null)
                 {
                     obj = this.Container.Components[name];
                 }
@@ -442,7 +442,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                     obj = null;
                 }
             }
-            if ((obj == null & addToContainer) 
+            if (obj == null && addToContainer 
                 && typeof(IComponent).IsAssignableFrom(type) 
                 && (array == null || array.Length == 0 || (array.Length == 1 && array[0] == this.Container))
                 && this.GetService(typeof(IDesignerHost)) is IDesignerHost designerHost && designerHost.Container == this.Container)
@@ -453,7 +453,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                     flag = true;
                 }
 
-                obj = (name == null | flag) 
+                obj = (name == null || flag) 
                     ? designerHost.CreateComponent(type) 
                     : designerHost.CreateComponent(type, name);
             }
@@ -559,7 +559,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                     {
                         flag3 = true;
                     }
-                    if (name == null | flag3)
+                    if (name == null || flag3)
                     {
                         this.Container.Add(component);
                     }

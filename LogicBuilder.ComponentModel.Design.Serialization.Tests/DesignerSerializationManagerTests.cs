@@ -1,5 +1,7 @@
 using System.ComponentModel;
+using System.ComponentModel.Design;
 using System.ComponentModel.Design.Serialization;
+using Moq;
 
 namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
 {
@@ -152,6 +154,26 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         }
 
         [Fact]
+        public void Container_GetsFromDesignerHostWhenNull()
+        {
+            // Arrange
+            var container = new Container();
+            var mockHost = new Mock<IDesignerHost>();
+            mockHost.Setup(h => h.Container).Returns(container);
+            
+            var mockProvider = new Mock<IServiceProvider>();
+            mockProvider.Setup(p => p.GetService(typeof(IDesignerHost))).Returns(mockHost.Object);
+            
+            var manager = new DesignerSerializationManager(mockProvider.Object);
+
+            // Act
+            var result = manager.Container;
+
+            // Assert
+            Assert.Same(container, result);
+        }
+
+        [Fact]
         public void PropertyProvider_CanSetAndGet()
         {
             // Arrange
@@ -163,6 +185,25 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
 
             // Assert
             Assert.Same(provider, manager.PropertyProvider);
+        }
+
+        [Fact]
+        public void PropertyProvider_ClearsPropertiesWhenChanged()
+        {
+            // Arrange
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager();
+            var provider1 = new TestPropertyProvider();
+            var provider2 = new TestPropertyProvider();
+            
+            ((DesignerSerializationManager)manager).PropertyProvider = provider1;
+            var props1 = manager.Properties;
+
+            // Act
+            ((DesignerSerializationManager)manager).PropertyProvider = provider2;
+            var props2 = manager.Properties;
+
+            // Assert
+            Assert.NotSame(props1, props2);
         }
 
         [Fact]
@@ -295,6 +336,21 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         }
 
         [Fact]
+        public void Properties_ReturnsWrappedPropertiesFromProvider()
+        {
+            // Arrange
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager();
+            ((DesignerSerializationManager)manager).PropertyProvider = new TestPropertyProvider();
+
+            // Act
+            var properties = manager.Properties;
+
+            // Assert
+            Assert.NotNull(properties);
+            Assert.True(properties.Count > 0);
+        }
+
+        [Fact]
         public void AddSerializationProvider_AddsProvider()
         {
             // Arrange
@@ -367,6 +423,203 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         }
 
         [Fact]
+        public void CreateInstance_RecyclesInstanceWhenRecycleInstancesIsTrue()
+        {
+            // Arrange
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager
+            {
+                RecycleInstances = true
+            };
+
+            // Act & Assert
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var instance1 = manager.CreateInstance(typeof(TestClass), null, "test", false);
+                Assert.Same(instance1, instance1);
+            }
+        }
+
+        [Fact]
+        public void CreateInstance_DoesNotRecycleInstanceWhenTypeMismatchAndValidateRecycledTypesIsTrue()
+        {
+            // Arrange
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager
+            {
+                RecycleInstances = true,
+                ValidateRecycledTypes = true
+            };
+
+            // Act & Assert
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var instance1 = manager.CreateInstance(typeof(TestClass), null, "test1", false);
+                var instance2 = manager.CreateInstance(typeof(TestClass2), null, "test2", false);
+                Assert.NotSame(instance1, instance2);
+            }
+        }
+
+        [Fact]
+        public void CreateInstance_RecyclesFromContainerWhenAvailable()
+        {
+            // Arrange
+            var container = new Container();
+            var existingComponent = new TestComponent();
+            container.Add(existingComponent, "test");
+
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager
+            {
+                RecycleInstances = true,
+                Container = container
+            };
+
+            // Act & Assert
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var instance = manager.CreateInstance(typeof(TestComponent), null, "test", true);
+                Assert.Same(existingComponent, instance);
+            }
+        }
+
+        [Fact]
+        public void CreateInstance_UsesDesignerHostToCreateComponent()
+        {
+            // Arrange
+            var container = new Container();
+            var mockHost = new Mock<IDesignerHost>();
+            mockHost.Setup(h => h.Container).Returns(container);
+            mockHost.Setup(h => h.CreateComponent(typeof(TestComponent), "test"))
+                .Returns(new TestComponent());
+
+            var mockProvider = new Mock<IServiceProvider>();
+            mockProvider.Setup(p => p.GetService(typeof(IDesignerHost))).Returns(mockHost.Object);
+
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager(mockProvider.Object)
+            {
+                Container = container
+            };
+
+            // Act
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var instance = manager.CreateInstance(typeof(TestComponent), null, "test", true);
+
+                // Assert
+                Assert.NotNull(instance);
+                mockHost.Verify(h => h.CreateComponent(typeof(TestComponent), "test"), Times.Once);
+            }
+        }
+
+        [Fact]
+        public void CreateInstance_UsesDesignerHostWithoutNameWhenPreserveNamesIsFalseAndNameExists()
+        {
+            // Arrange
+            var container = new Container();
+            container.Add(new TestComponent(), "test");
+            
+            var mockHost = new Mock<IDesignerHost>();
+            mockHost.Setup(h => h.Container).Returns(container);
+            mockHost.Setup(h => h.CreateComponent(typeof(TestComponent)))
+                .Returns(new TestComponent());
+
+            var mockProvider = new Mock<IServiceProvider>();
+            mockProvider.Setup(p => p.GetService(typeof(IDesignerHost))).Returns(mockHost.Object);
+
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager(mockProvider.Object)
+            {
+                Container = container,
+                PreserveNames = false
+            };
+
+            // Act
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var instance = manager.CreateInstance(typeof(TestComponent), null, "test", true);
+
+                // Assert
+                Assert.NotNull(instance);
+                mockHost.Verify(h => h.CreateComponent(typeof(TestComponent)), Times.Once);
+            }
+        }
+
+        [Fact]
+        public void CreateInstance_AddsComponentToContainerWhenNotCreatedByHost()
+        {
+            // Arrange
+            var container = new Container();
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager
+            {
+                Container = container
+            };
+
+            // Act
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                manager.CreateInstance(typeof(TestComponent), null, "test", true);
+
+                // Assert
+                Assert.NotNull(container.Components["test"]);
+            }
+        }
+
+        [Fact]
+        public void CreateInstance_AddsComponentWithoutNameWhenPreserveNamesIsFalseAndNameExists()
+        {
+            // Arrange
+            var container = new Container();
+            container.Add(new TestComponent(), "test");
+            
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager
+            {
+                Container = container,
+                PreserveNames = false
+            };
+
+            // Act
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var instance = manager.CreateInstance(typeof(TestComponent), null, "test", true);
+
+                // Assert
+                Assert.NotNull(instance);
+                Assert.True(container.Components.Count >= 2);
+            }
+        }
+
+        [Fact]
+        public void CreateInstance_ThrowsSerializationExceptionForMissingConstructor()
+        {
+            // Arrange
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager();
+
+            // Act & Assert
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var exception = Assert.Throws<System.Runtime.Serialization.SerializationException>(() =>
+                    manager.CreateInstance(typeof(TestClass), new object[] { "arg1", 123, true }, "test", false));
+                
+                Assert.Contains("TestClass", exception.Message);
+            }
+        }
+
+        [Fact]
+        public void CreateInstance_ConvertsParametersForConstructor()
+        {
+            // Arrange
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager();
+
+            // Act
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var instance = manager.CreateInstance(typeof(TestClassWithConstructor), new object[] { 42 }, "test", false);
+
+                // Assert
+                Assert.NotNull(instance);
+                var testInstance = instance as TestClassWithConstructor;
+                Assert.Equal("42", testInstance?.Value);
+            }
+        }
+
+        [Fact]
         public void GetInstance_ReturnsInstanceByName()
         {
             // Arrange
@@ -405,6 +658,28 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         }
 
         [Fact]
+        public void GetInstance_ReturnsFromContainerWhenPreserveNamesIsTrue()
+        {
+            // Arrange
+            var container = new Container();
+            var component = new TestComponent();
+            container.Add(component, "test");
+
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager
+            {
+                Container = container,
+                PreserveNames = true
+            };
+
+            // Act & Assert
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var retrieved = manager.GetInstance("test");
+                Assert.Same(component, retrieved);
+            }
+        }
+
+        [Fact]
         public void GetName_ReturnsNameForInstance()
         {
             // Arrange
@@ -439,6 +714,44 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
             using (((DesignerSerializationManager)manager).CreateSession())
             {
                 Assert.Throws<ArgumentNullException>(() => manager.GetName(null!));
+            }
+        }
+
+        [Fact]
+        public void GetName_ReturnsNameFromComponentSite()
+        {
+            // Arrange
+            var container = new Container();
+            var component = new TestComponent();
+            container.Add(component, "test");
+
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager();
+
+            // Act & Assert
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var name = manager.GetName(component);
+                Assert.Equal("test", name);
+            }
+        }
+
+        [Fact]
+        public void GetName_ReturnsFullNameFromNestedSite()
+        {
+            // Arrange
+            var mockSite = new Mock<INestedSite>();
+            mockSite.Setup(s => s.FullName).Returns("parent.child");
+            
+            var component = new TestComponent();
+            typeof(Component).GetProperty("Site")!.SetValue(component, mockSite.Object);
+
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager();
+
+            // Act & Assert
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var name = manager.GetName(component);
+                Assert.Equal("parent.child", name);
             }
         }
 
@@ -553,6 +866,20 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         }
 
         [Fact]
+        public void ReportError_DoesNothingForNullError()
+        {
+            // Arrange
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager();
+
+            // Act & Assert
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                manager.ReportError(null!);
+                Assert.Empty(((DesignerSerializationManager)manager).Errors);
+            }
+        }
+
+        [Fact]
         public void GetType_ThrowsExceptionOutsideSession()
         {
             // Arrange
@@ -577,6 +904,76 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         }
 
         [Fact]
+        public void GetType_HandlesPlusSignAsNestedType()
+        {
+            // Arrange
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager();
+
+            // Act & Assert
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var type = manager.GetType("LogicBuilder.ComponentModel.Design.Serialization.Tests.DesignerSerializationManagerTests+TestClass, LogicBuilder.ComponentModel.Design.Serialization.Tests, Version=1.0.0.0, Culture=neutral, PublicKeyToken=646893bec0268535");
+                Assert.Equal(typeof(TestClass), type);
+            }
+        }
+
+        [Fact]
+        public void GetType_ReturnsNullForUnsupportedType()
+        {
+            // Arrange
+            var mockProvider = new Mock<TypeDescriptionProvider>();
+            mockProvider.Setup(p => p.IsSupportedType(It.IsAny<Type>())).Returns(false);
+
+            var mockProviderService = new Mock<TypeDescriptionProviderService>();
+            mockProviderService.Setup(s => s.GetProvider(It.IsAny<Type>())).Returns(mockProvider.Object);
+
+            var mockServiceProvider = new Mock<IServiceProvider>();
+            mockServiceProvider.Setup(p => p.GetService(typeof(TypeDescriptionProviderService)))
+                .Returns(mockProviderService.Object);
+
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager(mockServiceProvider.Object);
+
+            // Act & Assert
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var type = manager.GetType("System.String");
+                Assert.Null(type);
+            }
+        }
+
+        [Fact]
+        public void GetRuntimeType_UsesTypeResolutionService()
+        {
+            // Arrange
+            var mockTypeResolver = new Mock<ITypeResolutionService>();
+            mockTypeResolver.Setup(t => t.GetType("CustomType")).Returns(typeof(TestClass));
+
+            var mockProvider = new Mock<IServiceProvider>();
+            mockProvider.Setup(p => p.GetService(typeof(ITypeResolutionService))).Returns(mockTypeResolver.Object);
+
+            var manager = new DesignerSerializationManager(mockProvider.Object);
+
+            // Act
+            var type = manager.GetRuntimeType("CustomType");
+
+            // Assert
+            Assert.Equal(typeof(TestClass), type);
+        }
+
+        [Fact]
+        public void GetRuntimeType_FallsBackToTypeGetType()
+        {
+            // Arrange
+            var manager = new DesignerSerializationManager();
+
+            // Act
+            var type = manager.GetRuntimeType("System.String");
+
+            // Assert
+            Assert.Equal(typeof(string), type);
+        }
+
+        [Fact]
         public void GetSerializer_ReturnsNullForNullObjectType()
         {
             // Arrange
@@ -598,6 +995,75 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
             // Act & Assert
             Assert.Throws<ArgumentNullException>(() =>
                 manager.GetSerializer(typeof(TestClass), null));
+        }
+
+        [Fact]
+        public void GetSerializer_ReturnsSerializerFromAttribute()
+        {
+            // Arrange
+            var manager = new DesignerSerializationManager();
+
+            // Act
+            using (manager.CreateSession())
+            {
+                var serializer = manager.GetSerializer(typeof(TestClassWithSerializer), typeof(TestSerializer));
+
+                // Assert
+                Assert.NotNull(serializer);
+                Assert.IsType<TestSerializer>(serializer);
+            }
+        }
+
+        [Fact]
+        public void GetSerializer_CachesSerializerDuringSession()
+        {
+            // Arrange
+            var manager = new DesignerSerializationManager();
+
+            // Act
+            using (manager.CreateSession())
+            {
+                var serializer1 = manager.GetSerializer(typeof(TestClassWithSerializer), typeof(TestSerializer));
+                var serializer2 = manager.GetSerializer(typeof(TestClassWithSerializer), typeof(TestSerializer));
+
+                // Assert
+                Assert.Same(serializer1, serializer2);
+            }
+        }
+
+        [Fact]
+        public void GetSerializer_UsesCustomSerializationProvider()
+        {
+            // Arrange
+            var manager = (IDesignerSerializationManager)new DesignerSerializationManager();
+            var customSerializer = new TestSerializer();
+            var provider = new CustomSerializationProvider(customSerializer);
+            manager.AddSerializationProvider(provider);
+
+            // Act
+            using (((DesignerSerializationManager)manager).CreateSession())
+            {
+                var serializer = manager.GetSerializer(typeof(TestClass), typeof(TestSerializer));
+
+                // Assert
+                Assert.Same(customSerializer, serializer);
+            }
+        }
+
+        [Fact]
+        public void GetSerializer_UsesDefaultSerializationProvider()
+        {
+            // Arrange
+            var manager = new DesignerSerializationManager();
+
+            // Act
+            using (manager.CreateSession())
+            {
+                var serializer = manager.GetSerializer(typeof(TestClassWithDefaultProvider), typeof(TestSerializerWithDefaultProvider));
+
+                // Assert
+                Assert.NotNull(serializer);
+            }
         }
 
         [Fact]
@@ -639,6 +1105,40 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
             Assert.True(eventRaised);
         }
 
+        [Fact]
+        public void IServiceProvider_GetService_ReturnsContainer()
+        {
+            // Arrange
+            var container = new Container();
+            var manager = (IServiceProvider)new DesignerSerializationManager
+            {
+                Container = container
+            };
+
+            // Act
+            var service = manager.GetService(typeof(IContainer));
+
+            // Assert
+            Assert.Same(container, service);
+        }
+
+        [Fact]
+        public void IServiceProvider_GetService_DelegatesToProvider()
+        {
+            // Arrange
+            var mockService = new object();
+            var mockProvider = new Mock<IServiceProvider>();
+            mockProvider.Setup(p => p.GetService(typeof(object))).Returns(mockService);
+
+            var manager = (IServiceProvider)new DesignerSerializationManager(mockProvider.Object);
+
+            // Act
+            var service = manager.GetService(typeof(object));
+
+            // Assert
+            Assert.Same(mockService, service);
+        }
+
         #endregion
 
         #region Helper Classes
@@ -646,6 +1146,63 @@ namespace LogicBuilder.ComponentModel.Design.Serialization.Tests
         private class TestClass
         {
             public string Name { get; set; } = string.Empty;
+        }
+
+        private class TestClass2
+        {
+            public string Name { get; set; } = string.Empty;
+        }
+
+        private class TestClassWithConstructor(string value)
+        {
+            public string Value { get; } = value;
+        }
+
+        private class TestComponent : Component
+        {
+        }
+
+        private class TestPropertyProvider
+        {
+            public string TestProperty { get; set; } = "test";
+        }
+
+        [DesignerSerializer(typeof(TestSerializer), typeof(TestSerializer))]
+        private class TestClassWithSerializer
+        {
+        }
+
+        [DefaultSerializationProvider(typeof(TestDefaultSerializationProvider))]
+        private class TestSerializerWithDefaultProvider
+        {
+        }
+
+        private class TestClassWithDefaultProvider
+        {
+        }
+
+        private class TestSerializer
+        {
+        }
+
+        private class TestDefaultSerializationProvider : IDesignerSerializationProvider
+        {
+            public object? GetSerializer(IDesignerSerializationManager manager, object? currentSerializer, Type? objectType, Type serializerType)
+            {
+                if (serializerType == typeof(TestSerializerWithDefaultProvider))
+                    return new TestSerializerWithDefaultProvider();
+                return null;
+            }
+        }
+
+        private class CustomSerializationProvider(object serializer) : IDesignerSerializationProvider
+        {
+            private readonly object serializer = serializer;
+
+            public object? GetSerializer(IDesignerSerializationManager manager, object? currentSerializer, Type? objectType, Type serializerType)
+            {
+                return serializer;
+            }
         }
 
         private class MockServiceProvider : IServiceProvider
