@@ -14,7 +14,7 @@ using System.Text;
 namespace LogicBuilder.ComponentModel.Design.Serialization
 {
     /// <summary>Provides an implementation of the <see cref="T:System.ComponentModel.Design.Serialization.IDesignerSerializationManager" /> interface.</summary>
-    public class DesignerSerializationManager : IDesignerSerializationManager, IServiceProvider
+    public class DesignerSerializationManager : IDesignerSerializationManager
     {
         [ExcludeFromCodeCoverage]
         private sealed class SerializationSession : IDisposable
@@ -355,7 +355,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                         array = new PropertyDescriptor[propertyDescriptorCollection.Count];
                         for (int i = 0; i < array.Length; i++)
                         {
-                            array[i] = this.WrapProperty(propertyDescriptorCollection[i], obj);
+                            array[i] = WrapProperty(propertyDescriptorCollection[i], obj);
                         }
                     }
                     this.properties = new PropertyDescriptorCollection(array);
@@ -489,26 +489,31 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                                 bool flag2 = true;
                                 for (int k = 0; k < array2.Length; k++)
                                 {
-                                    if (!(array2[k] == null) && !parameters[k].ParameterType.IsAssignableFrom(array2[k]))
+                                    if (array2[k] != null && !parameters[k].ParameterType.IsAssignableFrom(array2[k]))
                                     {
                                         if (array[k] is IConvertible convertible)
                                         {
                                             try
                                             {
                                                 array3[k] = convertible.ToType(parameters[k].ParameterType, null);
-                                                goto IL_219;
                                             }
-                                            catch (InvalidCastException)
+                                            catch (Exception e) when (e is FormatException || e is InvalidCastException)
                                             {
                                                 // Type conversion failed - this constructor parameter doesn't match.
-                                                // Fall through to set flag2 = false and break.
+                                                flag2 = false;
+                                                break;
                                             }
                                         }
-                                        flag2 = false;
-                                        break;
+                                        else
+                                        {
+                                            flag2 = false;
+                                            break;
+                                        } 
                                     }
-                                    array3[k] = array[k];
-                                    IL_219:;
+                                    else
+                                    {
+                                        array3[k] = array[k];
+                                    }
                                 }
                                 if (flag2)
                                 {
@@ -604,7 +609,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                 if (this.serializers != null)
                 {
                     obj = this.serializers[objectType];
-                    if (obj != null && !serializerType.IsAssignableFrom(obj.GetType()))
+                    if (obj != null && !serializerType.IsInstanceOfType(obj))
                     {
                         obj = null;
                     }
@@ -768,7 +773,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
             }
         }
 
-        private PropertyDescriptor WrapProperty(PropertyDescriptor property, object owner)
+        private static PropertyDescriptor WrapProperty(PropertyDescriptor property, object owner)
         {
             if (property == null)
             {
