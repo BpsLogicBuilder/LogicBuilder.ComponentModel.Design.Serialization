@@ -532,7 +532,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                 {
                     StringBuilder stringBuilder = new();
                     object[] array4 = array;
-                    for (int l = 0; l < array4.Length; l++)
+                    for (int l = 0; array4 != null && l < array4.Length; l++)
                     {
                         object obj2 = array4[l];
                         if (stringBuilder.Length > 0)
@@ -630,7 +630,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                                     Type runtimeType2 = this.GetRuntimeType(designerSerializerAttribute.SerializerTypeName);
                                     if (runtimeType2 != null)
                                     {
-                                        obj = Activator.CreateInstance(runtimeType2, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.CreateInstance, null, null, null);
+                                        obj = Activator.CreateInstance(runtimeType2, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.CreateInstance, null, null, null);// NOSONAR
                                         break;
                                     }
                                 }
@@ -653,7 +653,7 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
                     type = this.GetRuntimeType(defaultSerializationProviderAttribute.ProviderTypeName);
                     if (type != null && typeof(IDesignerSerializationProvider).IsAssignableFrom(type))
                     {
-                        IDesignerSerializationProvider designerSerializationProvider = (IDesignerSerializationProvider)Activator.CreateInstance(type, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.CreateInstance, null, null, null);
+                        IDesignerSerializationProvider designerSerializationProvider = (IDesignerSerializationProvider)Activator.CreateInstance(type, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.CreateInstance, null, null, null);// NOSONAR
                         ((IDesignerSerializationManager)this).AddSerializationProvider(designerSerializationProvider);
                     }
                 }
