@@ -511,54 +511,26 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
 
         private object GetObjectFromParameterConversion(Type type, object[] array, MissingMethodException ex)
         {
-            Type[] array2 = GetTypeArray(array);
-            object[] array3 = new object[array.Length];
             ConstructorInfo[] constructors = TypeDescriptor.GetReflectionType(type).GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.CreateInstance);
-            object obj = GetObjectFromParameters(type, array, array2, array3, constructors);
+            object obj = GetObjectFromParameters(type, array, constructors);
             return obj ?? throw new MissingMethodException("Failed to create instance", ex);
         }
 
-        private object GetObjectFromParameters(Type type, object[] array, Type[] array2, object[] array3, ConstructorInfo[] constructors)
+        private object GetObjectFromParameters(Type type, object[] array, ConstructorInfo[] constructors)
         {
+            Type[] array2 = GetTypeArray(array);
+            object[] array3 = new object[array.Length];
             object obj = null;
             for (int j = 0; j < constructors.Length; j++)
             {
                 ConstructorInfo constructorInfo = constructors[j];
                 ParameterInfo[] parameters = constructorInfo.GetParameters();
-                if (parameters == null || parameters.Length != array2.Length)
+                if (parameters?.Length != array2.Length)
                 {
                     continue;
                 }
-                bool flag2 = true;
-                for (int k = 0; k < array2.Length; k++)
-                {
-                    if (array2[k] != null && !parameters[k].ParameterType.IsAssignableFrom(array2[k]))
-                    {
-                        if (array[k] is IConvertible convertible)
-                        {
-                            try
-                            {
-                                array3[k] = convertible.ToType(parameters[k].ParameterType, null);
-                            }
-                            catch (Exception e) when (e is FormatException || e is InvalidCastException)
-                            {
-                                // Type conversion failed - this constructor parameter doesn't match.
-                                flag2 = false;
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            flag2 = false;
-                            break;
-                        }
-                    }
-                    else
-                    {
-                        array3[k] = array[k];
-                    }
-                }
-                if (flag2)
+
+                if (GetParameter(array, array2, array3, parameters))
                 {
                     obj = TypeDescriptor.CreateInstance(this.serviceProvider, type, null, array3);
                     break;
@@ -566,6 +538,33 @@ namespace LogicBuilder.ComponentModel.Design.Serialization
             }
 
             return obj;
+        }
+
+        private static bool GetParameter(object[] array, Type[] array2, object[] array3, ParameterInfo[] parameters)
+        {
+            for (int k = 0; k < array2.Length; k++)
+            {
+                if (array2[k] == null || parameters[k].ParameterType.IsAssignableFrom(array2[k]))
+                {
+                    array3[k] = array[k];
+                    continue;
+                }
+
+                if (array[k] is not IConvertible convertible)
+                    return false;
+
+                try
+                {
+                    array3[k] = convertible.ToType(parameters[k].ParameterType, null);
+                }
+                catch (Exception e) when (e is FormatException || e is InvalidCastException)
+                {
+                    // Type conversion failed - this constructor parameter doesn't match.
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private static Type[] GetTypeArray(object[] array)
